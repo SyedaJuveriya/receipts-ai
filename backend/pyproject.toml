@@ -1,0 +1,9 @@
+[project]
+name = "receipts-backend"
+version = "0.1.0"
+description = "Receipts AI persistent-memory agent backend"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "fastapi>=0.142.4",
+    "uvicorn[standard]>=0.54.0",
+]
