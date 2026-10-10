@@ -18,6 +18,14 @@ class MemoryStatus(str, Enum):
     CONTRADICTED = "CONTRADICTED"
     REVIEW_REQUIRED = "REVIEW_REQUIRED"
 
+class MemoryRelationship(str, Enum):
+    NEW = "NEW"
+    DUPLICATE = "DUPLICATE"
+    UPDATE = "UPDATE"
+    SUPERSEDES = "SUPERSEDES"
+    CONTRADICTS = "CONTRADICTS"
+    UNRELATED = "UNRELATED"
+
 
 class MemoryCreate(BaseModel):
     content: str = Field(min_length=1, max_length=5000)
@@ -30,6 +38,8 @@ class MemoryRecord(BaseModel):
     content: str
     memory_type: MemoryType
     status: MemoryStatus = MemoryStatus.ACTIVE
+    relationship: MemoryRelationship = MemoryRelationship.NEW
+    related_memory_id: str | None = None
     due_at: datetime | None = None
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)

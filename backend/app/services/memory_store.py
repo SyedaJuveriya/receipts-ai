@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from qdrant_client import QdrantClient, models
 from fastembed import TextEmbedding
 
@@ -11,22 +12,28 @@ VECTOR_SIZE = 384
 
 class MemoryStore:
     def __init__(self) -> None:
-        storage_path = Path(__file__).resolve().parents[2] / "data" / "qdrant"
+        storage_path = (
+            Path(__file__).resolve().parents[2] / "data" / "qdrant"
+        )
         storage_path.mkdir(parents=True, exist_ok=True)
         self.client = QdrantClient(path=str(storage_path))
-        self.embedding_model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
+        self.embedding_model = TextEmbedding(
+            "sentence-transformers/all-MiniLM-L6-v2"
+        )
 
         if not self.client.collection_exists(COLLECTION_NAME):
             self.client.create_collection(
-        collection_name=COLLECTION_NAME,
-        vectors_config=models.VectorParams(
-            size=VECTOR_SIZE,
-            distance=models.Distance.COSINE,
-        ),
-    )
+                collection_name=COLLECTION_NAME,
+                vectors_config=models.VectorParams(
+                    size=VECTOR_SIZE,
+                    distance=models.Distance.COSINE,
+                ),
+            )
 
     def save(self, memory: MemoryRecord) -> None:
-        vector = list(self.embedding_model.embed([memory.content]))[0].tolist()
+        vector = list(
+            self.embedding_model.embed([memory.content])
+        )[0].tolist()
 
         self.client.upsert(
             collection_name=COLLECTION_NAME,
@@ -40,7 +47,9 @@ class MemoryStore:
         )
 
     def search(self, query: str, limit: int = 5) -> list[dict]:
-        vector = list(self.embedding_model.embed([query]))[0].tolist()
+        vector = list(
+            self.embedding_model.embed([query])
+        )[0].tolist()
 
         results = self.client.query_points(
             collection_name=COLLECTION_NAME,
@@ -51,10 +60,30 @@ class MemoryStore:
         return [
             {
                 "score": point.score,
-                **point.payload,
+                **(point.payload or {}),
             }
             for point in results
         ]
+
+    def get_by_id(self, memory_id: str) -> dict | None:
+        results = self.client.retrieve(
+            collection_name=COLLECTION_NAME,
+            ids=[memory_id],
+            with_payload=True,
+            with_vectors=False,
+        )
+
+        if not results:
+            return None
+
+        point = results[0]
+        return {
+            "id": str(point.id),
+            **(point.payload or {}),
+        }
+
+    def update(self, memory: MemoryRecord) -> None:
+        self.save(memory)
 
     def close(self) -> None:
         self.client.close()
