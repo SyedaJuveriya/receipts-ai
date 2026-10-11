@@ -13,7 +13,7 @@ class MemoryDecision:
 
 
 def normalize_text(text: str) -> str:
-    """Normalize text for simple duplicate comparisons."""
+    """Normalize text for duplicate comparison."""
     text = text.casefold().strip()
     text = re.sub(r"[^\w\s]", " ", text)
     return " ".join(text.split())
@@ -23,11 +23,50 @@ def classify_memory(
     content: str,
     existing_memories: list[dict],
 ) -> MemoryDecision:
-    """Classify a statement using conservative rule-based checks."""
+    """Classify memories using conservative text and similarity checks."""
     text = normalize_text(content)
 
     if not existing_memories:
         return MemoryDecision(MemoryRelationship.NEW)
+
+    candidates = [
+        memory
+        for memory in existing_memories
+        if memory.get("id") and memory.get("content")
+    ]
+
+    # Detect exact normalized duplicates first.
+    for memory in candidates:
+        if text == normalize_text(str(memory["content"])):
+            return MemoryDecision(
+                MemoryRelationship.DUPLICATE,
+                str(memory["id"]),
+            )
+
+    # Detect close textual duplicates among strong semantic matches.
+    new_words = set(text.split())
+
+    if len(new_words) >= 4:
+        for memory in candidates:
+            score = float(memory.get("score", 0))
+            if score < 0.78:
+                continue
+
+            old_words = set(
+                normalize_text(str(memory["content"])).split()
+            )
+            if not old_words:
+                continue
+
+            overlap = len(new_words & old_words) / max(
+                len(new_words), len(old_words)
+            )
+
+            if overlap >= 0.75:
+                return MemoryDecision(
+                    MemoryRelationship.DUPLICATE,
+                    str(memory["id"]),
+                )
 
     update_phrases = (
         "actually",
@@ -40,63 +79,26 @@ def classify_memory(
         "update that",
     )
 
-    # Ignore weak semantic search matches.
-    candidates = [
-        memory
-        for memory in existing_memories
-        if float(memory.get("score", 0)) >= 0.78
-        and memory.get("id")
-        and memory.get("content")
-    ]
-
-    # First check for exact or normalized duplicates.
-    for memory in candidates:
-        old_text = normalize_text(str(memory["content"]))
-
-        if text == old_text:
-            return MemoryDecision(
-                MemoryRelationship.DUPLICATE,
-                str(memory["id"]),
-            )
-
-    # Treat highly overlapping text as a possible duplicate.
-    new_words = set(text.split())
-
-    if len(new_words) >= 4:
-        for memory in candidates:
-            old_text = normalize_text(str(memory["content"]))
-            old_words = set(old_text.split())
-
-            if not old_words:
-                continue
-
-            overlap = len(new_words & old_words) / max(
-                len(new_words),
-                len(old_words),
-            )
-
-            if overlap >= 0.75:
-                return MemoryDecision(
-                    MemoryRelationship.DUPLICATE,
-                    str(memory["id"]),
-                )
-
-    # Only consider updates when the statement explicitly signals a change.
-    has_update_phrase = any(
-        phrase in text for phrase in update_phrases
-    )
-
-    if has_update_phrase:
+    if any(phrase in text for phrase in update_phrases):
         decision_candidates = [
             memory
             for memory in candidates
             if memory.get("memory_type") == "DECISION"
+            and float(memory.get("score", 0)) >= 0.50
+            and memory.get("status", "ACTIVE") == "ACTIVE"
         ]
 
-        if len(decision_candidates) == 1:
+        # Qdrant returns results by similarity, highest score first.
+        # Use the strongest candidate rather than refusing every update
+        # when older duplicate decisions exist.
+        if decision_candidates:
+            best_match = max(
+                decision_candidates,
+                key=lambda memory: float(memory.get("score", 0)),
+            )
             return MemoryDecision(
                 MemoryRelationship.SUPERSEDES,
-                str(decision_candidates[0]["id"]),
+                str(best_match["id"]),
             )
 
         return MemoryDecision(

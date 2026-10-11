@@ -82,8 +82,30 @@ class MemoryStore:
             **(point.payload or {}),
         }
 
+    
     def update(self, memory: MemoryRecord) -> None:
-        self.save(memory)
+        """Update an existing memory while preserving its ID."""
+        vector = list(
+            self.embedding_model.embed([memory.content])
+        )[0].tolist()
+
+        self.client.set_payload(
+            collection_name=COLLECTION_NAME,
+            payload=memory.model_dump(mode="json"),
+            points=[memory.id],
+        )
+
+        self.client.upsert(
+            collection_name=COLLECTION_NAME,
+            points=[
+                models.PointStruct(
+                    id=memory.id,
+                    vector=vector,
+                    payload=memory.model_dump(mode="json"),
+                )
+            ],
+        )
+
 
     def close(self) -> None:
         self.client.close()
