@@ -37,6 +37,7 @@ class LyzrService:
                 headers=headers,
                 json=payload,
             )
+            print("Lyzr response:", response.status_code, response.text)
             response.raise_for_status()
             return response.json()
 
