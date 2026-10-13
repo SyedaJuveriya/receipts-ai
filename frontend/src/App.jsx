@@ -16,8 +16,8 @@ function formatDate(value) {
 
 function App() {
   const [message, setMessage] = useState("");
-  const [query, setQuery] = useState("project");
-  const [searchInput, setSearchInput] = useState("project");
+  const [query, setQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [memories, setMemories] = useState([]);
   const [filter, setFilter] = useState("ALL");
   const [loading, setLoading] = useState(false);
@@ -53,7 +53,7 @@ function App() {
 
     try {
       const params = new URLSearchParams({
-        q: searchTerm.trim() || "project",
+        q: searchTerm.trim(),
         limit: "20",
       });
 
@@ -80,9 +80,9 @@ function App() {
     }
   }, [query, addActivity]);
 
-  useEffect(() => {
-    searchMemories("project");
-  }, []); // Initial load only.
+ useEffect(() => {
+  // Initial load only — don't run an empty search.
+}, []);
 
   const loadFollowups = useCallback(async () => {
   try {
@@ -166,7 +166,8 @@ useEffect(() => {
 
   async function handleSearch(event) {
     event.preventDefault();
-    const nextQuery = searchInput.trim() || "project";
+    const nextQuery = searchInput.trim();
+    if (!nextQuery) return;
     setQuery(nextQuery);
     await searchMemories(nextQuery);
   }
@@ -213,8 +214,8 @@ useEffect(() => {
           <div className="connection-card">
             <span className="connection-dot" />
             <div>
-              <strong>Local environment</strong>
-              <small>FastAPI · Qdrant</small>
+             <strong>Stop Prompting. Code Solo Agents</strong>
+<small>Omi · Lyzr · Qdrant</small>
             </div>
           </div>
           <div className="sidebar-footer">
@@ -333,7 +334,7 @@ useEffect(() => {
       </div>
     </div>
   )}
-  
+
               <form className="search-form" onSubmit={handleSearch}>
                 <span className="search-icon">⌕</span>
                 <input
