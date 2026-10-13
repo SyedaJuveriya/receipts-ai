@@ -186,6 +186,7 @@ function App() {
           <a className="nav-item active" href="#overview"><span>◈</span> Overview</a>
           <a className="nav-item" href="#capture"><span>＋</span> Capture memory</a>
           <a className="nav-item" href="#memories"><span>▤</span> Memory explorer</a>
+          <a className="nav-item" href="#architecture"><span>⌘</span> System architecture</a>
           <a className="nav-item" href="#activity"><span>⌁</span> Agent activity</a>
         </nav>
 
@@ -276,6 +277,8 @@ function App() {
               </div>
             )}
           </section>
+
+          <ArchitectureDiagram />
 
           <div className="content-grid">
             <section className="panel memory-panel" id="memories">
@@ -411,6 +414,208 @@ function App() {
     </div>
   );
 }
+
+
+function ArchitectureDiagram() {
+  const [active, setActive] = useState("fastapi");
+  const [selectedId, setSelectedId] = useState("fastapi");
+
+  const nodes = [
+    {
+      id: "omi",
+      number: "01",
+      title: "Omi",
+      subtitle: "Voice capture",
+      description:
+        "Omi captures spoken input and sends real-time transcripts to the configured FastAPI webhook.",
+      kind: "source",
+    },
+    {
+      id: "dashboard",
+      number: "02",
+      title: "React dashboard",
+      subtitle: "Manual capture + search",
+      description:
+        "The dashboard sends text to /memories/extract and retrieves matching memories through /memories/search.",
+      kind: "frontend",
+    },
+    {
+      id: "fastapi",
+      number: "03",
+      title: "FastAPI",
+      subtitle: "Backend API",
+      description:
+        "Receives Omi webhooks and handles memory creation, extraction and search requests.",
+      kind: "backend",
+    },
+    {
+      id: "lyzr",
+      number: "04",
+      title: "Lyzr",
+      subtitle: "Extraction service",
+      description:
+        "Processes natural-language input and identifies candidate memories for the backend.",
+      kind: "agent",
+    },
+    {
+      id: "logic",
+      number: "05",
+      title: "Memory processing",
+      subtitle: "Deduplication + decisions",
+      description:
+        "Checks for duplicate memories and evaluates decision changes before saving records.",
+      kind: "logic",
+    },
+    {
+      id: "qdrant",
+      number: "06",
+      title: "Qdrant",
+      subtitle: "Persistent storage",
+      description:
+        "Stores memory records and supports semantic retrieval for later queries.",
+      kind: "storage",
+    },
+  ];
+
+  const connections = [
+    ["omi", "fastapi", "Webhook transcript"],
+    ["dashboard", "fastapi", "HTTP API requests"],
+    ["fastapi", "lyzr", "Extraction request"],
+    ["lyzr", "logic", "Extracted memories"],
+    ["logic", "qdrant", "Save / update"],
+    ["qdrant", "dashboard", "Search results"],
+  ];
+
+ const selected = nodes.find((node) => node.id === selectedId);
+ const hovered = nodes.find((node) => node.id === active);
+const displayedNode = hovered || selected;
+
+
+  return (
+    <section className="panel architecture-panel" id="architecture">
+      <div className="panel-heading">
+        <div>
+          <div className="section-kicker">SYSTEM DESIGN</div>
+          <h2>System Architecture</h2>
+          <p className="architecture-subtitle">
+            Follow the flow from capture to persistent memory.
+          </p>
+        </div>
+        <span className="architecture-badge">SYSTEM MAP</span>
+      </div>
+
+      <div className="architecture-canvas">
+        <div className="architecture-lane">
+          <span className="architecture-lane-label">INPUT LAYER</span>
+          <div className="architecture-node-grid">
+            {nodes.filter((node) => ["omi", "dashboard"].includes(node.id)).map((node) => (
+              <button
+                key={node.id}
+                type="button"
+                className={`architecture-node ${node.kind} ${active === node.id ? "is-active" : ""}`}
+                onMouseEnter={() => setActive(node.id)}
+                onFocus={() => setActive(node.id)}
+                onClick={() => {
+                  setActive(node.id);
+                  setSelectedId(node.id);
+}}
+                aria-pressed={selectedId === node.id}
+              >
+                <span className="architecture-node-top">
+                  <span className="architecture-node-icon">{node.number}</span>
+                  <span className="architecture-node-dot" />
+                </span>
+                <strong>{node.title}</strong>
+                <small>{node.subtitle}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="architecture-down-arrow">
+          <span>↓</span>
+          <small>Incoming requests</small>
+        </div>
+
+        <div className="architecture-lane">
+          <span className="architecture-lane-label">PROCESSING LAYER</span>
+          <div className="architecture-node-grid three-columns">
+            {nodes.filter((node) => ["fastapi", "lyzr", "logic"].includes(node.id)).map((node) => (
+              <button
+                key={node.id}
+                type="button"
+                className={`architecture-node ${node.kind} ${active === node.id ? "is-active" : ""}`}
+                onMouseEnter={() => setActive(node.id)}
+                onFocus={() => setActive(node.id)}
+                onClick={() => {
+                  setActive(node.id);
+                  setSelectedId(node.id);
+}}
+                aria-pressed={selectedId === node.id}
+              >
+                <span className="architecture-node-top">
+                  <span className="architecture-node-icon">{node.number}</span>
+                  <span className="architecture-node-dot" />
+                </span>
+                <strong>{node.title}</strong>
+                <small>{node.subtitle}</small>
+              </button>
+            ))}
+          </div>
+          <div className="architecture-flow-caption">
+            <span>FastAPI</span><span>→</span>
+            <span>Lyzr</span><span>→</span>
+            <span>Memory processing</span>
+          </div>
+        </div>
+
+        <div className="architecture-down-arrow">
+          <span>↓</span>
+          <small>Validated memory records</small>
+        </div>
+
+        <div className="architecture-lane storage-lane">
+          <span className="architecture-lane-label">MEMORY LAYER</span>
+          <button
+            type="button"
+            className={`architecture-node storage ${active === "qdrant" ? "is-active" : ""}`}
+            onMouseEnter={() => setActive("qdrant")}
+            onFocus={() => setActive("qdrant")}
+            onClick={() => setSelectedId("qdrant")}
+            aria-pressed={selectedId === "qdrant"}
+          >
+            <span className="architecture-node-top">
+              <span className="architecture-node-icon">06</span>
+              <span className="architecture-node-dot" />
+            </span>
+            <strong>Qdrant</strong>
+            <small>Persistent storage · Semantic search</small>
+          </button>
+          <div className="architecture-return-path">
+            <span>↶</span> Retrieved results return to the React dashboard
+          </div>
+        </div>
+      </div>
+
+      <div className="architecture-details" aria-live="polite">
+  <div className="architecture-details-icon">↗</div>
+  <div>
+    <span className="architecture-detail-label">
+      COMPONENT DETAILS · {displayedNode.number}
+    </span>
+    <h3>{displayedNode.title}</h3>
+    <p>{displayedNode.description}</p>
+  </div>
+</div>
+      <div className="architecture-legend">
+        <span><i className="legend-dot input-dot" /> Input</span>
+        <span><i className="legend-dot process-dot" /> Processing</span>
+        <span><i className="legend-dot storage-dot" /> Storage</span>
+      </div>
+    </section>
+  );
+}
+
 
 function StatCard({ label, value, foot, icon, tone }) {
   return (
