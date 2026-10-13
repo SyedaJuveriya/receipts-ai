@@ -452,3 +452,45 @@ async def extract_memories_with_lyzr(data: LyzrExtractRequest):
             status_code=500,
             detail="Failed to save extracted memories",
         ) from exc
+
+@router.get("/followups")
+def get_followups(limit: int = 10):
+    if not 1 <= limit <= 20:
+        raise HTTPException(status_code=400, detail="Limit must be between 1 and 20")
+
+    wanted_types = {MemoryType.DECISION.value, MemoryType.COMMITMENT.value}
+    seen: dict[str, dict] = {}
+
+    for query in ("commitment to do", "decided to", "plan will", "study", "meeting", "task deadline"):
+        try:
+            results = memory_store.search(query, limit=20)
+        except Exception:
+            continue
+        for item in results:
+            memory_id = item.get("id")
+            if not memory_id:
+                continue
+            if item.get("memory_type") not in wanted_types:
+                continue
+            if item.get("status", MemoryStatus.ACTIVE.value) != MemoryStatus.ACTIVE.value:
+                continue
+            seen[str(memory_id)] = item
+
+    items = sorted(
+        seen.values(),
+        key=lambda m: str(m.get("created_at", "")),
+        reverse=True,
+    )[:limit]
+
+    followups = [
+        {
+            "id": m.get("id"),
+            "content": m.get("content"),
+            "memory_type": m.get("memory_type"),
+            "created_at": m.get("created_at"),
+            "due_at": m.get("due_at"),
+            "nudge": f"You said: \"{m.get('content')}\" - still pending?",
+        }
+        for m in items
+    ]
+    return {"count": len(followups), "followups": followups}
