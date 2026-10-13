@@ -48,6 +48,8 @@ function App() {
   }, []);
 
   const searchMemories = useCallback(async (searchTerm = query) => {
+    if (!searchTerm.trim()) return;
+    
     setSearching(true);
     setError("");
 
