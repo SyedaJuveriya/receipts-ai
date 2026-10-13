@@ -33,6 +33,7 @@ function App() {
     },
   ]);
   const [lastResult, setLastResult] = useState(null);
+  const [followups, setFollowups] = useState([]);
 
   const addActivity = useCallback((title, detail, type = "system") => {
     setActivities((previous) => [
@@ -82,6 +83,23 @@ function App() {
   useEffect(() => {
     searchMemories("project");
   }, []); // Initial load only.
+
+  const loadFollowups = useCallback(async () => {
+  try {
+    const response = await fetch(`${API}/memories/followups?limit=5`);
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+    setFollowups(data.followups || []);
+  } catch {
+    setFollowups([]);
+  }
+}, []);
+
+useEffect(() => {
+  loadFollowups();
+}, [loadFollowups]);
 
   async function handleCapture(event) {
     event.preventDefault();
@@ -137,6 +155,7 @@ function App() {
 
       setMessage("");
       await searchMemories(query);
+      await loadFollowups();
     } catch (err) {
       setError(err.message || "Could not process this message.");
       addActivity("Capture failed", err.message, "error");
@@ -291,6 +310,30 @@ function App() {
                 <span className="count-badge">{filteredMemories.length} results</span>
               </div>
 
+  {followups.length > 0 && (
+    <div style={{ margin: "0 0 20px" }}>
+      <div className="section-kicker">PROACTIVE · FOLLOW-UPS</div>
+      <div className="memory-list">
+        {followups.map((item) => (
+          <article className="memory-item" key={`fu-${item.id}`}>
+            <div className={`memory-type-icon ${String(item.memory_type).toLowerCase()}`}>
+              ↗
+            </div>
+            <div className="memory-body">
+              <div className="memory-meta">
+                <span className={`type-label ${String(item.memory_type).toLowerCase()}`}>
+                  {item.memory_type}
+                </span>
+                <span className="memory-time">{formatDate(item.created_at)}</span>
+              </div>
+              <p>{item.nudge}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  )}
+  
               <form className="search-form" onSubmit={handleSearch}>
                 <span className="search-icon">⌕</span>
                 <input
