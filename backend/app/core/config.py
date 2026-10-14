@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     lyzr_api_key: str = ""
     lyzr_agent_id: str = ""
     lyzr_api_url: str = "https://agent-prod.studio.lyzr.ai/v3/inference/chat/"
+    qdrant_url: str = ""
+    qdrant_api_key: str = ""
 
     @property
     def has_lyzr_api_key(self) -> bool:

@@ -1,5 +1,5 @@
 from pathlib import Path
-
+from app.core.config import settings
 from qdrant_client import QdrantClient, models
 from fastembed import TextEmbedding
 
@@ -11,12 +11,19 @@ VECTOR_SIZE = 384
 
 
 class MemoryStore:
+   
     def __init__(self) -> None:
-        storage_path = (
-            Path(__file__).resolve().parents[2] / "data" / "qdrant"
-        )
-        storage_path.mkdir(parents=True, exist_ok=True)
-        self.client = QdrantClient(path=str(storage_path))
+        if settings.qdrant_url.strip():
+            self.client = QdrantClient(
+                url=settings.qdrant_url.strip(),
+                api_key=settings.qdrant_api_key.strip() or None,
+            )
+        else:
+            storage_path = (
+                Path(__file__).resolve().parents[2] / "data" / "qdrant"
+            )
+            storage_path.mkdir(parents=True, exist_ok=True)
+            self.client = QdrantClient(path=str(storage_path))
         self.embedding_model = TextEmbedding(
             "sentence-transformers/all-MiniLM-L6-v2"
         )
